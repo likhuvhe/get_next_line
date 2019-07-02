@@ -5,73 +5,71 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: lkhuvhe <marvin@42.fr>                     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2019/06/27 14:36:01 by lkhuvhe           #+#    #+#             */
-/*   Updated: 2019/06/30 14:09:18 by lkhuvhe          ###   ########.fr       */
+/*   Created: 2019/07/02 13:38:36 by lkhuvhe           #+#    #+#             */
+/*   Updated: 2019/07/02 13:42:22 by lkhuvhe          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include "get_next_line.h"
 
-static int	ft_readline(int fd, char **buffer, int buffer_size)
-{
-	char	*tmp_hold;
-	char	my_buffer[BUFF_SIZE + 1];
-	ssize_t	my_read;
-
-	my_read = read(fd, my_buffer, buffer_size);
-	if (my_read < 1)
-		return (my_read);
-	my_buffer[my_read] = '\0';
-	tmp_hold = ft_strjoin(*buffer, my_buffer);
-	free(*buffer);
-	*buffer = ft_strdup(tmp_hold);
-	free(buffer);
-	return (1);
-}
-
-static int	ft_linechar(char *s, char c)
+static int	ft_len(char *s, char c)
 {
 	int i;
+
+	i = 0;
 	while (s[i])
 	{
 		if (s[i] == c)
 			return (i);
 		i++;
 	}
-	return (-1);	
+	return (0);
+}
+
+static int	ft_readline(char **buffer, char **line)
+{
+	char *temp;
+
+	if (ft_strchr(*buffer, '\n'))
+	{
+		*line = ft_strsub(*buffer, 0, ft_len(*buffer, '\n'));
+		temp = ft_strdup(ft_strchr(*buffer, '\n') + 1);
+		ft_strdel(buffer);
+		*buffer = ft_strdup(temp);
+		free(temp);
+	}
+	else
+	{
+		*line = ft_strdup(*buffer);
+		ft_strdel(buffer);
+	}
+	return (1);
 }
 
 int			get_next_line(const int fd, char **line)
 {
-	static char *buffer;
-	int  my_read;
+	static char	*buffer[1024];
+	char		buf[BUFF_SIZE + 1];
+	int			ret;
+	char		*temp;
 
-	buffer = NULL;
-	if (buffer == NULL)
-		buffer = (char *)malloc(sizeof(char));
-	while ((ft_strchar(buffer, '\n')) == NULL)
+	if (fd < 0 || line == NULL || read(fd, buf, 0) < 0)
+		return (-1);
+	if (buffer[fd] == NULL)
+		buffer[fd] = ft_strnew(1);
+	ret = 0;
+	while (!ft_strchr(buffer[fd], '\n') && (ret = read(fd, buf, BUFF_SIZE)) > 0)
 	{
-		my_read = ft_readline(fd, &buffer, BUFF_SIZE);
-		if (my_read < 1)
-			return (my_read);
+		buf[ret] = '\0';
+		temp = ft_strjoin(buffer[fd], buf);
+		ft_strdel(&buffer[fd]);
+		buffer[fd] = ft_strdup(temp);
+		ft_strdel(&temp);
 	}
-	*line = ft_strsub(buffer, 0, ft_linechar(buffer, '\n'));
-	buffer = ft_strchar(buffer, '\n');
-	buffer++;
-	return (1);
-}
-
-int main(void)
-{
-	char *buffer;
-	buffer = (char *)malloc(sizeof(char) * 1024);
-	int fd = open("get_next_line.h", O_RDONLY);
-	int g = get_next_line(fd, &buffer);
-	ft_putendl(buffer);
-	ft_putnbr(g);
-	return (0);
+	if (ret < 0)
+		return (-1);
+	else if (ret == 0 && (buffer[fd] == NULL || buffer[fd][0] == '\0'))
+		return (0);
+	else
+		return (ft_readline(&buffer[fd], line));
 }
